@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function Header() {
-  const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
+  const [shortcutReady, setShortcutReady] = useState(false);
 
   const today = new Date();
   const dateStr = today.toLocaleDateString('en-US', {
@@ -14,29 +14,28 @@ export default function Header() {
     day: 'numeric',
   });
 
-  async function handleSync() {
-    if (syncing) return;
-    setSyncing(true);
-    setSyncMsg(null);
+  useEffect(() => {
+    // Check if user has set up sync (has API key)
+    fetch('/api/settings')
+      .then((r) => r.json())
+      .then((s) => {
+        if (s.sync_api_key) setShortcutReady(true);
+      })
+      .catch(() => {});
+  }, []);
 
-    try {
-      const res = await fetch('/api/sync/peloton', { method: 'POST' });
-      const data = await res.json();
-
-      if (data.success) {
-        setSyncMsg(data.message);
-        if (data.synced > 0) {
-          setTimeout(() => window.location.reload(), 1500);
-        }
-      } else {
-        setSyncMsg(data.error || 'Sync failed');
-      }
-    } catch {
-      setSyncMsg('Network error');
-    } finally {
-      setSyncing(false);
-      setTimeout(() => setSyncMsg(null), 3000);
+  function handleSync() {
+    if (!shortcutReady) {
+      window.location.href = '/setup';
+      return;
     }
+    // Launch iOS Shortcut
+    window.location.href = 'shortcuts://run-shortcut?name=FitPulse%20Sync';
+    setSyncMsg('Syncing via Shortcut...');
+    setTimeout(() => {
+      setSyncMsg(null);
+      window.location.reload();
+    }, 5000);
   }
 
   return (
@@ -49,11 +48,10 @@ export default function Header() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleSync}
-            disabled={syncing}
             className="w-9 h-9 rounded-full bg-card border border-card-border flex items-center justify-center text-text-secondary hover:text-accent transition"
-            title="Sync Peloton"
+            title="Sync Workouts"
           >
-            <svg className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </button>

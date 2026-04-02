@@ -5,15 +5,19 @@ import Link from 'next/link';
 
 export default function SetupPage() {
   const [apiKey, setApiKey] = useState('');
+  const [step, setStep] = useState(1);
   const [copied, setCopied] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch('/api/settings')
       .then((r) => r.json())
       .then((data) => {
-        const key = data.settings?.find((s: { key: string }) => s.key === 'sync_api_key');
-        if (key) setApiKey(key.value);
+        if (data.sync_api_key) {
+          setApiKey(data.sync_api_key);
+        } else {
+          // Auto-generate key
+          generateKey();
+        }
       })
       .catch(() => {});
   }, []);
@@ -21,16 +25,14 @@ export default function SetupPage() {
   async function generateKey() {
     const newKey = crypto.randomUUID().replace(/-/g, '');
     setApiKey(newKey);
-    setSaving(true);
     await fetch('/api/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: 'sync_api_key', value: newKey }),
+      body: JSON.stringify({ sync_api_key: newKey }),
     });
-    setSaving(false);
   }
 
-  function copyText(text: string, label: string) {
+  function copy(text: string, label: string) {
     navigator.clipboard.writeText(text);
     setCopied(label);
     setTimeout(() => setCopied(null), 2000);
@@ -48,139 +50,144 @@ export default function SetupPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <h1 className="text-lg font-bold">Apple Health Sync</h1>
+        <div>
+          <h1 className="text-lg font-bold">Sync Setup</h1>
+          <p className="text-text-muted text-xs">One-time setup, takes 2 minutes</p>
+        </div>
       </div>
 
-      {/* API Key */}
-      <div className="bg-card border border-card-border rounded-2xl p-5 mb-4">
-        <h2 className="font-semibold text-sm mb-3">1. API Key</h2>
-        {apiKey ? (
-          <div className="flex items-center gap-2">
-            <code className="flex-1 bg-bg/70 rounded-xl px-3 py-2 text-xs text-accent font-mono break-all">
-              {apiKey}
-            </code>
+      <p className="text-text-secondary text-sm mb-6 leading-relaxed">
+        This creates an iOS Shortcut that pulls your Peloton and Tonal workouts from Apple Health into FitPulse. Tap the sync button anytime to refresh.
+      </p>
+
+      {/* Step 1: Open Shortcuts */}
+      <div className={`bg-card border rounded-2xl p-5 mb-3 transition ${step === 1 ? 'border-accent/40' : 'border-card-border'}`}>
+        <div className="flex items-center gap-3 mb-3">
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step > 1 ? 'bg-accent text-bg' : step === 1 ? 'bg-accent/20 text-accent' : 'bg-card-border text-text-muted'}`}>
+            {step > 1 ? '\u2713' : '1'}
+          </div>
+          <h2 className="font-semibold text-sm">Create the Shortcut</h2>
+        </div>
+        {step === 1 && (
+          <div className="pl-10 space-y-3">
+            <p className="text-text-secondary text-xs leading-relaxed">
+              Open the <strong>Shortcuts</strong> app on your iPhone, tap <strong>+</strong> in the top right, and name it <strong>FitPulse Sync</strong>.
+            </p>
             <button
-              onClick={() => copyText(apiKey, 'key')}
-              className="px-3 py-2 rounded-xl bg-accent/15 text-accent text-xs font-semibold shrink-0"
+              onClick={() => setStep(2)}
+              className="px-4 py-2 rounded-xl bg-accent/15 border border-accent/30 text-accent text-xs font-semibold"
             >
-              {copied === 'key' ? 'Copied' : 'Copy'}
+              Done, next step
             </button>
           </div>
-        ) : (
-          <button
-            onClick={generateKey}
-            disabled={saving}
-            className="w-full py-3 rounded-xl bg-accent/15 border border-accent/30 text-accent font-semibold text-sm"
-          >
-            {saving ? 'Generating...' : 'Generate API Key'}
-          </button>
         )}
       </div>
 
-      {/* Webhook URL */}
-      <div className="bg-card border border-card-border rounded-2xl p-5 mb-4">
-        <h2 className="font-semibold text-sm mb-3">2. Webhook URL</h2>
-        <div className="flex items-center gap-2">
-          <code className="flex-1 bg-bg/70 rounded-xl px-3 py-2 text-xs text-text-secondary font-mono break-all">
-            {webhookUrl}
-          </code>
-          <button
-            onClick={() => copyText(webhookUrl, 'url')}
-            className="px-3 py-2 rounded-xl bg-accent/15 text-accent text-xs font-semibold shrink-0"
-          >
-            {copied === 'url' ? 'Copied' : 'Copy'}
-          </button>
-        </div>
-      </div>
-
-      {/* iOS Shortcut Instructions */}
-      <div className="bg-card border border-card-border rounded-2xl p-5 mb-4">
-        <h2 className="font-semibold text-sm mb-3">3. iOS Shortcut Setup</h2>
-        <div className="space-y-4 text-xs text-text-secondary leading-relaxed">
-          <div>
-            <p className="text-text-primary font-medium mb-1">Create the Shortcut:</p>
-            <ol className="list-decimal list-inside space-y-1.5 pl-1">
-              <li>Open the <strong>Shortcuts</strong> app on your iPhone</li>
-              <li>Tap <strong>+</strong> to create a new shortcut</li>
-              <li>Name it <strong>&quot;Sync Health to FitPulse&quot;</strong></li>
-            </ol>
+      {/* Step 2: Find Health Samples */}
+      <div className={`bg-card border rounded-2xl p-5 mb-3 transition ${step === 2 ? 'border-accent/40' : 'border-card-border'}`}>
+        <div className="flex items-center gap-3 mb-3">
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step > 2 ? 'bg-accent text-bg' : step === 2 ? 'bg-accent/20 text-accent' : 'bg-card-border text-text-muted'}`}>
+            {step > 2 ? '\u2713' : '2'}
           </div>
-
-          <div>
-            <p className="text-text-primary font-medium mb-1">Add Actions:</p>
-            <ol className="list-decimal list-inside space-y-1.5 pl-1">
-              <li>Add <strong>&quot;Find Health Samples&quot;</strong> action</li>
+          <h2 className="font-semibold text-sm">Add &quot;Find Health Samples&quot;</h2>
+        </div>
+        {step === 2 && (
+          <div className="pl-10 space-y-3">
+            <ol className="text-text-secondary text-xs leading-relaxed space-y-2 list-decimal list-inside">
+              <li>Tap <strong>Add Action</strong></li>
+              <li>Search for <strong>&quot;Find Health Samples&quot;</strong></li>
               <li>Set Type to <strong>Workouts</strong></li>
-              <li>Set Start Date to <strong>last 24 hours</strong></li>
-              <li>Add <strong>&quot;Get Contents of URL&quot;</strong> action</li>
-              <li>Set URL to your webhook URL (copied above)</li>
-              <li>Method: <strong>POST</strong></li>
-              <li>Request Body: <strong>JSON</strong></li>
+              <li>Tap <strong>Add Filter</strong> &rarr; <strong>Start Date</strong> &rarr; <strong>is in the last</strong> &rarr; <strong>1 day</strong></li>
             </ol>
+            <button
+              onClick={() => setStep(3)}
+              className="px-4 py-2 rounded-xl bg-accent/15 border border-accent/30 text-accent text-xs font-semibold"
+            >
+              Done, next step
+            </button>
           </div>
-
-          <div>
-            <p className="text-text-primary font-medium mb-1">JSON Body Format:</p>
-            <pre className="bg-bg/70 rounded-xl p-3 text-[10px] font-mono overflow-x-auto whitespace-pre">
-{`{
-  "api_key": "<your key>",
-  "workouts": [
-    {
-      "type": "cycling",
-      "duration_minutes": 30,
-      "start_time": "2024-01-01T08:00:00Z",
-      "source": "Peloton",
-      "output_kj": 250
-    }
-  ],
-  "weight": {
-    "lbs": 185,
-    "date": "2024-01-01"
-  }
-}`}
-            </pre>
-          </div>
-
-          <div>
-            <p className="text-text-primary font-medium mb-1">Automate It:</p>
-            <ol className="list-decimal list-inside space-y-1.5 pl-1">
-              <li>Go to <strong>Automation</strong> tab in Shortcuts</li>
-              <li>Tap <strong>+</strong> &rarr; <strong>Create Personal Automation</strong></li>
-              <li>Choose <strong>Time of Day</strong> (e.g., 9 PM daily)</li>
-              <li>Add your <strong>&quot;Sync Health to FitPulse&quot;</strong> shortcut</li>
-              <li>Turn off <strong>Ask Before Running</strong></li>
-            </ol>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Test */}
-      <div className="bg-card border border-card-border rounded-2xl p-5">
-        <h2 className="font-semibold text-sm mb-3">4. Test It</h2>
-        <p className="text-xs text-text-secondary leading-relaxed mb-3">
-          Run this curl command to verify your setup:
-        </p>
-        <div className="relative">
-          <pre className="bg-bg/70 rounded-xl p-3 text-[10px] font-mono overflow-x-auto whitespace-pre">
-{`curl -X POST ${webhookUrl} \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "api_key": "${apiKey || '<your-key>'}",
-    "workouts": [{
-      "type": "cycling",
-      "duration_minutes": 30,
-      "start_time": "${new Date().toISOString()}",
-      "source": "Peloton"
-    }]
-  }'`}
-          </pre>
-          <button
-            onClick={() => copyText(`curl -X POST ${webhookUrl} -H "Content-Type: application/json" -d '{"api_key":"${apiKey}","workouts":[{"type":"cycling","duration_minutes":30,"start_time":"${new Date().toISOString()}","source":"Peloton"}]}'`, 'curl')}
-            className="absolute top-2 right-2 px-2 py-1 rounded-lg bg-accent/15 text-accent text-[10px] font-semibold"
-          >
-            {copied === 'curl' ? 'Copied' : 'Copy'}
-          </button>
+      {/* Step 3: Add Get Contents of URL */}
+      <div className={`bg-card border rounded-2xl p-5 mb-3 transition ${step === 3 ? 'border-accent/40' : 'border-card-border'}`}>
+        <div className="flex items-center gap-3 mb-3">
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step > 3 ? 'bg-accent text-bg' : step === 3 ? 'bg-accent/20 text-accent' : 'bg-card-border text-text-muted'}`}>
+            {step > 3 ? '\u2713' : '3'}
+          </div>
+          <h2 className="font-semibold text-sm">Add &quot;Get Contents of URL&quot;</h2>
         </div>
+        {step === 3 && (
+          <div className="pl-10 space-y-3">
+            <ol className="text-text-secondary text-xs leading-relaxed space-y-2 list-decimal list-inside">
+              <li>Add another action: <strong>&quot;Get Contents of URL&quot;</strong></li>
+              <li>Tap the URL field and paste this:</li>
+            </ol>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 bg-bg/70 rounded-lg px-3 py-2 text-[10px] text-accent font-mono break-all">
+                {webhookUrl}
+              </code>
+              <button
+                onClick={() => copy(webhookUrl, 'url')}
+                className="px-3 py-2 rounded-lg bg-accent/15 text-accent text-[10px] font-semibold shrink-0"
+              >
+                {copied === 'url' ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+            <ol start={3} className="text-text-secondary text-xs leading-relaxed space-y-2 list-decimal list-inside">
+              <li>Set Method to <strong>POST</strong></li>
+              <li>Under Headers, add: <strong>Content-Type</strong> = <strong>application/json</strong></li>
+              <li>Under Request Body, choose <strong>JSON</strong> and add these keys:</li>
+            </ol>
+            <div className="bg-bg/70 rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-text-muted font-mono">api_key</span>
+                <div className="flex items-center gap-1">
+                  <code className="text-[10px] text-accent font-mono">{apiKey}</code>
+                  <button
+                    onClick={() => copy(apiKey, 'key')}
+                    className="px-2 py-1 rounded bg-accent/15 text-accent text-[9px] font-semibold"
+                  >
+                    {copied === 'key' ? '\u2713' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-text-muted font-mono">workouts</span>
+                <span className="text-[10px] text-text-secondary">Health Samples variable</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setStep(4)}
+              className="px-4 py-2 rounded-xl bg-accent/15 border border-accent/30 text-accent text-xs font-semibold"
+            >
+              Done, next step
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Step 4: Done */}
+      <div className={`bg-card border rounded-2xl p-5 mb-3 transition ${step === 4 ? 'border-accent/40' : 'border-card-border'}`}>
+        <div className="flex items-center gap-3 mb-3">
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= 4 ? 'bg-accent text-bg' : 'bg-card-border text-text-muted'}`}>
+            {step > 4 ? '\u2713' : '4'}
+          </div>
+          <h2 className="font-semibold text-sm">Test it</h2>
+        </div>
+        {step === 4 && (
+          <div className="pl-10 space-y-3">
+            <p className="text-text-secondary text-xs leading-relaxed">
+              Tap the <strong>play button</strong> in the Shortcuts app to test. If it works, go back to FitPulse and hit the sync button.
+            </p>
+            <Link
+              href="/"
+              className="inline-block px-4 py-2 rounded-xl bg-accent text-bg text-xs font-bold"
+            >
+              Back to FitPulse
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
