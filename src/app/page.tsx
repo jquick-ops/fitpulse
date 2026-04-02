@@ -47,6 +47,9 @@ export default async function Dashboard() {
   let weightEntries: Row[] = [];
   let settingsRows: Row[] = [];
   let allWorkoutsForStreak: Row[] = [];
+  let weeklyScore: string | null = null;
+  let weeklySummary: string | null = null;
+  let weeklyTrend: string | null = null;
   let dbError: string | null = null;
 
   try {
@@ -76,6 +79,22 @@ export default async function Dashboard() {
     const firstError = results.find(r => r.error);
     if (firstError?.error) {
       dbError = firstError.error.message;
+    }
+
+    // Fetch weekly fitness score
+    try {
+      const baseUrl = process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : 'http://localhost:3000';
+      const scoreRes = await fetch(`${baseUrl}/api/dashboard/score`, { cache: 'no-store' });
+      if (scoreRes.ok) {
+        const scoreData = await scoreRes.json();
+        weeklyScore = scoreData.grade;
+        weeklySummary = scoreData.summary;
+        weeklyTrend = scoreData.trend;
+      }
+    } catch {
+      // Score is non-critical, continue without it
     }
   } catch (e) {
     dbError = e instanceof Error ? e.message : 'Failed to connect to database';
@@ -195,9 +214,9 @@ export default async function Dashboard() {
           target={activityTarget}
           streak={streak}
           weekDays={moveWeek}
-          weeklyScore={null}
-          weeklySummary={null}
-          weeklyTrend={null}
+          weeklyScore={weeklyScore}
+          weeklySummary={weeklySummary}
+          weeklyTrend={weeklyTrend}
         />
         <FastCard
           isFasting={isFasting}

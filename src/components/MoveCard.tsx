@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import ActivityLogger from './ActivityLogger';
 
 interface Workout {
   id: string;
@@ -57,27 +57,7 @@ export default function MoveCard({
   weeklySummary,
   weeklyTrend,
 }: MoveCardProps) {
-  const [activityInput, setActivityInput] = useState('');
-  const [isLogging, setIsLogging] = useState(false);
   const hit = totalMinutes >= target;
-
-  async function handleLogActivity() {
-    if (!activityInput.trim() || isLogging) return;
-    setIsLogging(true);
-    try {
-      const res = await fetch('/api/workouts/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: activityInput }),
-      });
-      if (res.ok) {
-        setActivityInput('');
-        window.location.reload();
-      }
-    } finally {
-      setIsLogging(false);
-    }
-  }
 
   return (
     <div className={`bg-card border border-card-border rounded-2xl p-5 ${hit ? 'shadow-[0_0_20px_rgba(34,197,94,0.1)]' : ''}`}>
@@ -142,28 +122,7 @@ export default function MoveCard({
       </div>
 
       {/* Log Activity input */}
-      <div className="mb-4">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={activityInput}
-            onChange={(e) => setActivityInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleLogActivity()}
-            placeholder='Log activity... "Hockey game, felt great"'
-            className="flex-1 bg-bg/70 border border-card-border rounded-xl px-4 py-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50 transition"
-          />
-          <button
-            onClick={handleLogActivity}
-            disabled={isLogging || !activityInput.trim()}
-            className="px-4 py-3 rounded-xl bg-accent/15 border border-accent/30 text-accent font-semibold text-sm hover:bg-accent/25 transition disabled:opacity-40"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </button>
-        </div>
-        <p className="text-text-muted text-[10px] mt-1.5 px-1">AI parses activity, duration, and details</p>
-      </div>
+      <ActivityLogger />
 
       {/* Weekly Fitness Score */}
       {weeklyScore && (
