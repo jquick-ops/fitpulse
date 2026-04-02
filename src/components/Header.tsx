@@ -17,6 +17,15 @@ export default function Header() {
         <p className="text-text-secondary text-sm">{dateStr}</p>
       </div>
       <div className="flex items-center gap-2">
+        <a
+          href="shortcuts://run-shortcut?name=Sync%20Health%20to%20FitPulse"
+          className="w-9 h-9 rounded-full bg-card border border-card-border flex items-center justify-center text-text-secondary hover:text-accent transition"
+          title="Sync Apple Health"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </a>
         <Link
           href="/sync"
           className="w-9 h-9 rounded-full bg-card border border-card-border flex items-center justify-center text-text-secondary hover:text-accent transition"
